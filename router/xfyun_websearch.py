@@ -87,14 +87,16 @@ async def call_xfyun_debug_tool(search_keyword: str, limit: int = 3):
         )
 
 
-@router.post("/baidu-search", description="百度AI搜索")
-async def baidu_search(
-    content: str,  # 搜索内容，用户输入的查询关键词或问题
-    search_source: str = "baidu_search_v2",  # 搜索源，指定使用的搜索引擎版本
-    resource_type_filter: Optional[List[Dict[str, Any]]] = None,  # 资源类型过滤器，控制搜索结果类型和数量
-    search_filter: Optional[Dict[str, Any]] = None,  # 搜索过滤器，用于精确控制搜索条件
+class BaiduSearchRequest(BaseModel):
+    content: str  # 搜索内容，用户输入的查询关键词或问题
+    search_source: str = "baidu_search_v2"  # 搜索源，指定使用的搜索引擎版本
+    resource_type_filter: Optional[List[Dict[str, Any]]] = None  # 资源类型过滤器，控制搜索结果类型和数量
+    search_filter: Optional[Dict[str, Any]] = None  # 搜索过滤器，用于精确控制搜索条件
     search_recency_filter: str = "year"  # 时间过滤器，控制搜索结果的时间范围（year/month/week/day）
-):
+
+
+@router.post("/baidu-search", description="百度AI搜索")
+async def baidu_search(request: BaiduSearchRequest):
     """
     调用百度AI搜索API
     
@@ -128,24 +130,26 @@ async def baidu_search(
     }
     
     # 设置默认的资源类型过滤器
-    if resource_type_filter is None:
+    if request.resource_type_filter is None:
         resource_type_filter = [{"type": "web", "top_k": 10}]
+    else:
+        resource_type_filter = request.resource_type_filter
     
     data = {
         "messages": [
             {
-                "content": content,
+                "content": request.content,
                 "role": "user"
             }
         ],
-        "search_source": search_source,
+        "search_source": request.search_source,
         "resource_type_filter": resource_type_filter,
-        "search_recency_filter": search_recency_filter
+        "search_recency_filter": request.search_recency_filter
     }
     
     # 如果提供了搜索过滤器，则添加到请求中
-    if search_filter:
-        data["search_filter"] = search_filter
+    if request.search_filter:
+        data["search_filter"] = request.search_filter
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
